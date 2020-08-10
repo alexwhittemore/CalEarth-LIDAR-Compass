@@ -6,4 +6,4 @@ Dome construction typically requires some kind of measurement device to ensure t
 
 ## Code
 
-As it stands, this code is extremely messy. At time of writing, the most relevant file is `lidar_mpl_blit.py` which implements LIDAR data collection, plotting, and pass/fail checking for a simple wall.
+As it stands, this code is extremely messy. At time of writing, the most relevant file is `lidar_mpl_blit.py` which implements LIDAR data collection, plotting, and pass/fail checking for a simple wall. The other files are due for reorganization or removal - all are basically just intermediate tests and trials.
