@@ -26,11 +26,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
+# PARAMETERS
+
+tolerance = 50 # mm, single-sided. For instance, 50 means +/- 5cm
+
 # Setup the RPLidar
 PORT_NAME = '/dev/ttyUSB0'
 lidar = RPLidar(None, PORT_NAME)
 
-scan_data = np.array([0]*360)
+degree_aligned_scan_data = np.array([0]*360)
 scan_angles = np.array(np.radians(range(0, 360)))
 pass_fail = np.array([0]*360)
 
@@ -41,6 +45,49 @@ blit = False
 
 angles = curr_angles
 radii = curr_radii
+
+# Validation Models
+# Straight Wall
+def test_output_wall(scan_angles, scan_data):
+    """ Returns a numpy.array of True/False called pass_fail, signifying whether the scan_data array points are correct or not per a wall orthogonal to the 0* baseline."""
+    baseline = scan_data[0]
+    expected_distances = baseline/np.cos(scan_angles)
+    # Basically one big matrix comparison that the scan data is within +/-tolerance of "expected" - populates a numpy array of True/False.
+    return (scan_data<expected_distances+tolerance) == (scan_data>expected_distances-tolerance)
+
+def test_output_room(scan_angles, scan_data):
+    """ Returns a numpy.array of True/False called pass_fail, signifying whether the scan_data array points are correct or not per a rectangular room of defined height and width."""
+    height = 2663 # mm
+    width = 3901 # mm
+
+    # Distance at 0 degrees. This is the 0th element in our array, but let's search it more robustly anyway.
+    range_to_right = scan_data[scan_angles==0]
+    # Similar to above, but this is at 90 degrees = pi/2. This will eventually have to get thresholded in case
+    # what exists in the array isn't close enough to equal the target.
+    range_to_top = scan_data[scan_angles==(pi/2)]
+    range_to_bottom = height-range_to_top
+    range_to_left = width-range_to_right
+
+    # Calculate angle boundaries between the different zones.
+    # Upper right
+    angle_boundary_u_r = np.arctan(range_to_top/range_to_right)
+    angle_boundary_u_l = pi-np.arctan(range_to_top/range_to_left)
+    angle_boundary_l_l = pi+np.arctan(range_to_bottom/range_to_left)
+    angle_boundary_l_r = 2*pi-np.arctan(range_to_bottom/range_to_right)
+
+    # Test only the right-hand wall.
+    # expected_distances = range_to_right/np.cos(scan_angles)
+    # Test only the ceiling. Rotate all angles right by pi/2
+    # expected_distances = range_to_top/np.cos(scan_angles-(pi/2))
+    # Test only the left-hand wall. Rotate all angles right by pi
+    # expected_distances = range_to_left/np.cos(scan_angles-(pi))
+    # Test only the floor. Rotate all angles right by 3pi/2
+    expected_distances = range_to_bottom/np.cos(scan_angles-(3*pi/2))
+    return (scan_data<expected_distances+tolerance) == (scan_data>expected_distances-tolerance)
+
+
+    # We'll assume 0* is the distance to the right wall and 90* is the distance to the ceiling.
+
 
 fig = plt.figure(figsize=(8, 6), dpi=200)
 ax1 = plt.subplot(111, projection='polar')
@@ -66,10 +113,10 @@ t_start = time.time()
 k=0.
 i = 0
 def redraw():
-    global i,k,curr_angles,curr_radii,scan_data,scan_angles
+    global i,k,curr_angles,curr_radii,degree_aligned_scan_data,scan_angles
     i+=1
-    sweep_g.set_data(list(scan_angles[pass_fail==1]), list(scan_data[pass_fail==1]))
-    sweep_b.set_data(list(scan_angles[pass_fail!=1]), list(scan_data[pass_fail!=1]))
+    sweep_g.set_data(list(scan_angles[pass_fail==1]), list(degree_aligned_scan_data[pass_fail==1]))
+    sweep_b.set_data(list(scan_angles[pass_fail!=1]), list(degree_aligned_scan_data[pass_fail!=1]))
     ax1.set_rmax(10000)
     ax1.set_rticks([5000, 10000])
     tx = 'Mean Frame Rate:\n {fps:.3f}FPS'.format(fps= ((i+1) / (time.time() - t_start)) ) 
@@ -102,27 +149,25 @@ def redraw():
     # however plt.pause calls canvas.draw(), as can be read here:
     #http://bastibe.de/2013-05-30-speeding-up-matplotlib.html
 
-
-def dist_at_angle(angle, baseline):
-    return baseline/cos(radians(angle))
-
 def process_data(data):
     # print(data[0])
-    for n in range(len(pass_fail)):
-        dist = scan_data[n]
-        expected = dist_at_angle(n, scan_data[0])
-        pass_fail[n] = 1 if ((dist<expected+20) and dist>(expected-20)) else 0
+    # for n in range(len(pass_fail)):
+    #     dist = degree_aligned_scan_data[n]
+    #     expected = dist_at_angle(n, degree_aligned_scan_data[0])
+    #     pass_fail[n] = 1 if ((dist<expected+tolerance) and dist>(expected-tolerance)) else 0
     # print(pass_fail[:20])
+    global pass_fail
+    pass_fail = test_output_room(scan_angles, degree_aligned_scan_data)
+    redraw()
 
 try:
     print(lidar.info)
     for scan in lidar.iter_scans():
-        curr_angles = [x[1] for x in scan]
-        curr_radii = [x[2] for x in scan]
-        redraw()
+        #curr_angles = [x[1] for x in scan]
+        #curr_radii = [x[2] for x in scan]
         for (_, angle, distance) in scan:
-            scan_data[min([359, floor(angle)])] = distance
-        process_data(scan_data)
+            degree_aligned_scan_data[min([359, floor(angle)])] = distance
+        process_data(degree_aligned_scan_data)
 except KeyboardInterrupt:
     print('Stoping.')
 lidar.stop()
