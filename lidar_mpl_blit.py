@@ -75,14 +75,22 @@ def test_output_room(scan_angles, scan_data):
     angle_boundary_l_l = pi+np.arctan(range_to_bottom/range_to_left)
     angle_boundary_l_r = 2*pi-np.arctan(range_to_bottom/range_to_right)
 
+    # Preallocate a list of expected distances that we'll fill in.
+    expected_distances = np.array([0]*len(scan_angles))
+
     # Test only the right-hand wall.
-    # expected_distances = range_to_right/np.cos(scan_angles)
+    # The right wall is all angles >lower right and <upper right.
+    mask = np.logical_or(scan_angles<angle_boundary_u_r, scan_angles>angle_boundary_l_r)
+    expected_distances[mask] = range_to_right/np.cos(scan_angles)[mask]
     # Test only the ceiling. Rotate all angles right by pi/2
-    # expected_distances = range_to_top/np.cos(scan_angles-(pi/2))
+    mask = np.logical_and(scan_angles>angle_boundary_u_r, scan_angles<angle_boundary_u_l)
+    expected_distances[mask] = range_to_top/np.cos(scan_angles-(pi/2))[mask]
     # Test only the left-hand wall. Rotate all angles right by pi
-    # expected_distances = range_to_left/np.cos(scan_angles-(pi))
+    mask = np.logical_and(scan_angles>angle_boundary_u_l, scan_angles<angle_boundary_l_l)
+    expected_distances[mask] = range_to_left/np.cos(scan_angles-(pi))[mask]
     # Test only the floor. Rotate all angles right by 3pi/2
-    expected_distances = range_to_bottom/np.cos(scan_angles-(3*pi/2))
+    mask = np.logical_and(scan_angles>angle_boundary_l_l, scan_angles<angle_boundary_l_r)
+    expected_distances[mask] = range_to_bottom/np.cos(scan_angles-(3*pi/2))[mask]
     return (scan_data<expected_distances+tolerance) == (scan_data>expected_distances-tolerance)
 
 
