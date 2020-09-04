@@ -174,6 +174,7 @@ try:
         #curr_angles = [x[1] for x in scan]
         #curr_radii = [x[2] for x in scan]
         for (_, angle, distance) in scan:
+            angle = -angle
             degree_aligned_scan_data[min([359, floor(angle)])] = distance
         process_data(degree_aligned_scan_data)
 except KeyboardInterrupt:
