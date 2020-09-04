@@ -1,13 +1,7 @@
-actionlib==1.12.1
 Adafruit-Blinka==5.2.3
 adafruit-circuitpython-rplidar==1.1.2
 Adafruit-PlatformDetect==2.14.3
 Adafruit-PureIO==1.1.5
 matplotlib==3.3.0
-numpy==1.19.1
 pyftdi==0.51.2
-PyQt5==5.14.0
-PyQt5-sip==12.8.0
-pyqtgraph==0.11.0
 pyserial==3.4
-pyusb==1.0.2

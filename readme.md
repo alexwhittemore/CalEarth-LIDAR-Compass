@@ -7,3 +7,15 @@ Dome construction typically requires some kind of measurement device to ensure t
 ## Code
 
 As it stands, this code is extremely messy. At time of writing, the most relevant file is `lidar_mpl_blit.py` which implements LIDAR data collection, plotting, and pass/fail checking for a simple wall. The other files are due for reorganization or removal - all are basically just intermediate tests and trials.
+
+## Installation Instructions
+
+1. Bring up a raspberry pi using Noobs with the latest Raspberry Pi OS
+1. Open a terminal
+1. `git clone https://github.com/alexwhittemore/CalEarth-LIDAR-Compass.git python_lidar`
+1. sudo apt-get install python3-numpy
+1. `pip3 install -r requirements.txt`
+
+## Using
+
+1. Run `python3 lidar_mpl_blit.py`
