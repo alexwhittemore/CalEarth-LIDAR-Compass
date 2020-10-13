@@ -25,14 +25,19 @@ from adafruit_rplidar import RPLidar
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+import serial
 
 # PARAMETERS
 
-tolerance = 50 # mm, single-sided. For instance, 50 means +/- 5cm
+tolerance = 30 # mm, single-sided. For instance, 50 means +/- 5cm
 
 # Setup the RPLidar
 PORT_NAME = '/dev/ttyUSB0'
 lidar = RPLidar(None, PORT_NAME)
+
+# Set up the feedback laser
+LASER_PORT_NAME = '/dev/ttyUSB1'
+laser = serial.Serial(LASER_PORT_NAME, 57600) # Was unstable at 115200
 
 degree_aligned_scan_data = np.array([0]*360)
 scan_angles = np.array(np.radians(range(0, 360)))
@@ -57,7 +62,7 @@ def test_output_wall(scan_angles, scan_data):
 
 def test_output_room(scan_angles, scan_data):
     """ Returns a numpy.array of True/False called pass_fail, signifying whether the scan_data array points are correct or not per a rectangular room of defined height and width."""
-    height = 2663 # mm
+    height = 2413 # mm # 2413 living room, 2663 office
     width = 3901 # mm
 
     # Distance at 0 degrees. This is the 0th element in our array, but let's search it more robustly anyway.
@@ -165,7 +170,14 @@ def process_data(data):
     #     pass_fail[n] = 1 if ((dist<expected+tolerance) and dist>(expected-tolerance)) else 0
     # print(pass_fail[:20])
     global pass_fail
-    pass_fail = test_output_room(scan_angles, degree_aligned_scan_data)
+    pass_fail = test_output_room(scan_angles, degree_aligned_scan_data) # pass_fail is a np.array() of [True, False, True, True...] for 360 degrees.
+    pass_fail_packed = np.packbits(pass_fail) # pass_fail_packed is a np.array() of 45 integers formed from the 360 bits above.
+    pass_fail_bytes = pass_fail_packed.tobytes() # Python byte array to send over serial
+    # pass_fail_bytes = b'\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+    # pass_fail_bytes = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff'
+    laser.write(pass_fail_bytes)
+    #print(len(pass_fail_bytes))
+    #print(pass_fail_bytes)
     redraw()
 
 try:
@@ -179,5 +191,6 @@ try:
         process_data(degree_aligned_scan_data)
 except KeyboardInterrupt:
     print('Stoping.')
+laser.close()
 lidar.stop()
 lidar.disconnect()
